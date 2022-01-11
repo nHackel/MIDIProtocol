@@ -1,0 +1,8 @@
+name = "MIDIProtocol"
+uuid = "22044f6a-2d1b-4a5a-8b5d-c345727cf969"
+authors = ["nHackel <nHackel@users.noreply.github.com>"]
+version = "0.1.0"
+
+[deps]
+MIDI = "f57c4921-e30c-5f49-b073-3f2f2ada663e"
+MPIMeasurements = "a874a27a-e9a7-503d-98b6-bf61df4bb725"
