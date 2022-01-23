@@ -1,5 +1,9 @@
 module MIDIProtocol
 
-greet() = print("Hello World!")
+using MIDI
+using MusicManipulations
+using MPIMeasurements
+
+include("Protocol.jl")
 
 end # module
