@@ -51,10 +51,9 @@ function teachingToSingInTune(rob::StepcraftRobot,velForNotes::Vector)
   end
 end
 
-
-function _init(protocol::MIDIProtocol,rob::StepcraftRobot)
+function _init(protocol::MIDIProtocol)
   protocol.midiFile = load(protocol.params.filename)
-  protocol.singingStepcraft = SingingStepcraft(rob)
+  protocol.singingStepcraft = SingingStepcraft(getRobot(protocol.scanner))
   # TODO Check if this file is something we can play
   # TODO setup notes in StepCraftRobot
 end
