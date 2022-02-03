@@ -5,6 +5,23 @@ Base.@kwdef mutable struct MIDIProtocolParams <: ProtocolParams
 end
 MPIMeasurementProtocolParams(dict::Dict) = params_from_dict(MPIMeasurementProtocolParams, dict)
 
+mutable struct SingingStepcraft
+  robot::StepCraftRobot
+  velForNotes::Vector{Int64}
+  notes::Vector{String}
+
+  function SingingStepcraft(rob::StepcraftRobot)
+    #Hard coded...
+    velForNotes = [1980 2097 2222 2354 2495 2643 2800 2967 3143 3330 3528 3737 3960]
+    notes = ["C" "C#" "D" "D#" "E" "F" "F#" "G" "G#" "A" "A#" "B" "c"]
+    if length(velForNotes) != length(notes)
+      error("Length of velocity table and note table don't match!")
+    end
+    teachingToSingInTune(rob,velForNotes)
+    return new(rob,velForNotes,notes)
+  end
+end
+
 Base.@kwdef mutable struct MIDIProtocol <: Protocol
   name::AbstractString
   description::AbstractString
@@ -18,12 +35,26 @@ Base.@kwdef mutable struct MIDIProtocol <: Protocol
   cancelled::Bool = false
   stopped::Bool = false
   finishAcknowledged::Bool = false
+
+  singingStepcraft::SingingStepcraft = nothing
 end
 
 requiredDevices(protocol::MIDIProtocol) = [StepCraftRobot]
 
-function _init(protocol::MIDIProtocol)
+function teachingToSingInTune(rob::StepcraftRobot,velForNotes::Vector)
+  range = length(velForNotes)
+  if range > 100
+    error("Only 100 storage places to store velocities!")
+  end
+  for tone = 1:range
+    stepcraftCommand(rob,"#G$tone,$(velForNotes[tone])")
+  end
+end
+
+
+function _init(protocol::MIDIProtocol,rob::StepcraftRobot)
   protocol.midiFile = load(protocol.params.filename)
+  protocol.singingStepcraft = SingingStepcraft(rob)
   # TODO Check if this file is something we can play
   # TODO setup notes in StepCraftRobot
 end
@@ -108,3 +139,12 @@ function handleEvent(protocol::MIDIProtocol, event::ProgressQueryEvent)
 end
 
 handleEvent(protocol::MIDIProtocol, event::FinishedAckEvent) = protocol.finishAcknowledged = true
+
+Base.@kwdef mutable struct A
+  B::Int64
+  C::Int64 = test(B)
+end
+
+function test(x::Int64)
+  return x/2
+end
