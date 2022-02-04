@@ -2,18 +2,20 @@ export MIDIProtocol, MIDIProtocolParams
 
 Base.@kwdef mutable struct MIDIProtocolParams <: ProtocolParams
   filename::Union{Nothing, String} = nothing
-end
+end 
 MPIMeasurementProtocolParams(dict::Dict) = params_from_dict(MPIMeasurementProtocolParams, dict)
 
 mutable struct SingingStepcraft
   robot::MPIMeasurements.StepcraftRobot
   velForNotes::Vector{Int64}
   notes::Vector{String}
+  positionOnStage::Vector{Vector{typeof(1.0u"mm")}}
 
   function SingingStepcraft(rob::StepcraftRobot)
     #Hard coded...
     velForNotes = [1980 2097 2222 2354 2495 2643 2800 2967 3143 3330 3528 3737 3960]
-    notes = ["C" "C#" "D" "D#" "E" "F" "F#" "G" "G#" "A" "A#" "B" "c"]
+    notes = ["60" "61" "62" "63" "64" "65" "66" "67" "68" "69" "70" "71" "72"] #See Midi.jl Documentation
+    #notes = ["C" "C#" "D" "D#" "E" "F" "F#" "G" "G#" "A" "A#" "B" "c"] 
     if length(velForNotes) != length(notes)
       error("Length of velocity table and note table don't match!")
     end
@@ -54,12 +56,21 @@ end
 function _init(protocol::MIDIProtocol)
   protocol.midiFile = load(protocol.params.filename)
   protocol.singingStepcraft = SingingStepcraft(getRobot(protocol.scanner))
+  moveToMiddle(getRobot(protocol.scanner)
+  checkForPlayablity(protocol.midifile)
   # TODO Check if this file is something we can play
   # TODO setup notes in StepcraftRobot
 end
 
+function moveToMiddle(rob::StepcraftRobot)
+  axisRange = rob.params.axisRange
+  _moveAbs(rob,axisRange./2)
+end
+
 function timeEstimate(protocol::MIDIProtocol)
-  # TODO return track time as string
+  # TODO return track time as string. ?In SECONDS?
+  notes = getnotes(protocol.midiFile, 1)
+  return String(Int64(round((notes[1].pos-(notes[end].pos+notes[end].duration))/1000))))
 end
 
 function enterExecute(protocol::MPIMeasurementProtocol)
@@ -115,6 +126,8 @@ end
 
 function playNote(protocol::MIDIProtocol, note)
   # TODO Make some magic
+  if(Int(note.pitch)
+
 end
 
 function cleanup(protocol::MIDIProtocol)
