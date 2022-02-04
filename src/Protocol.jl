@@ -6,7 +6,7 @@ end
 MPIMeasurementProtocolParams(dict::Dict) = params_from_dict(MPIMeasurementProtocolParams, dict)
 
 mutable struct SingingStepcraft
-  robot::StepCraftRobot
+  robot::MPIMeasurements.StepcraftRobot
   velForNotes::Vector{Int64}
   notes::Vector{String}
 
@@ -39,7 +39,7 @@ Base.@kwdef mutable struct MIDIProtocol <: Protocol
   singingStepcraft::SingingStepcraft = nothing
 end
 
-requiredDevices(protocol::MIDIProtocol) = [StepCraftRobot]
+requiredDevices(protocol::MIDIProtocol) = [StepcraftRobot]
 
 function teachingToSingInTune(rob::StepcraftRobot,velForNotes::Vector)
   range = length(velForNotes)
@@ -55,7 +55,7 @@ function _init(protocol::MIDIProtocol)
   protocol.midiFile = load(protocol.params.filename)
   protocol.singingStepcraft = SingingStepcraft(getRobot(protocol.scanner))
   # TODO Check if this file is something we can play
-  # TODO setup notes in StepCraftRobot
+  # TODO setup notes in StepcraftRobot
 end
 
 function timeEstimate(protocol::MIDIProtocol)
