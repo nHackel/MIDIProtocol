@@ -14,18 +14,18 @@ Base.@kwdef mutable struct SingingStepcraft
   delay::Int64 = 0 #toDo: Measure Delay in ms
 
   function SingingStepcraft(rob::StepcraftRobot)#,lowestNote::Int) #,highestNote::Int)
-    #Hard coded...
     #velForNotes = [1980 2097 2222 2354 2495 2643 2800 2967 3143 3330 3528 3737 3960]
     #range = ["60" "61" "62" "63" "64" "65" "66" "67" "68" "69" "70" "71" "72"] #See MIDI.jl Documentation C=60
     #notes = ["C" "C#" "D" "D#" "E" "F" "F#" "G" "G#" "A" "A#" "B" "c"] 
     highestNote = 48  #toDo: look for better place to place these values
     lowestNote = 84
-    range = highestNote-lowestNote
+    
+    #possible initialisation errors:
     if range < 0
       error("Highest note should be higher than lowest note")
     end
     if range > 100
-      error("Length of velocity is to big (maximum = 100)")
+      error("Number of notes too high (maximum = 100)")
     end
     if maximum(velForNotes) > 10000 #toDo determin maximum Speed, with maximum speed one could detemin whether Stepcraft can always be instantiated with a hard coded lowest an highest note
       error("Highest Note is to high")
@@ -34,16 +34,10 @@ Base.@kwdef mutable struct SingingStepcraft
       error("Lowest Note is to low")
     end
 
-    velForNotes = zeros(range+1)
-    global counter = 1
-    for note in lowestNote:highestNote
-      velForNotes[counter] = 1980*2^((note-60)/12) #60 is hard coded here because thats the number belonging to the 1980 robot speed
-      counter = counter+1
-    end
+    velForNotes = teachingToSingInTune(rob,velForNotes,lowestNote,highestNote)
+    gettingOnStage(getRobot(protocol.scanner))
+    positionOnStage = rob.params.axisRange./2
 
-    teachingToSingInTune(rob,velForNotes)
-    moveToMiddle(getRobot(protocol.scanner))
-    positionOnStage = rob.params.axisRange
     return new(rob,velForNotes,lowestNote,highestNote,positionOnStage)
   end
 end
@@ -67,10 +61,22 @@ end
 
 requiredDevices(protocol::_MIDIProtocol) = [StepcraftRobot]
 
-function teachingToSingInTune(rob::StepcraftRobot,velForNotes::Vector)
+function teachingToSingInTune(rob::StepcraftRobot,lowestNote::Int64,highestNote::Int64)
+  #Calc Velocity values
+  range = highestNote-lowestNote
+  velForNotes = zeros(range+1)
+  global counter = 1
+  for note in lowestNote:highestNote
+    velForNotes[counter] = 1980*2^((note-60)/12) #60 is hard coded here because thats the number belonging to the 1980 robot speed
+    counter = counter+1
+  end
+  
+  #Sending velocity values to the stepcraft
   for tone = 1:length(velForNotes)
     stepcraftCommand(rob,"#G$tone,$(velForNotes[tone])")
   end
+
+  return velForNotes
 end
 
 function _init(protocol::_MIDIProtocol)
@@ -92,7 +98,8 @@ function checkForPlayablity(protocol::_MIDIProtocol)
   end
 end
 
-function moveToMiddle(rob::StepcraftRobot)
+function gettingOnStage(rob::StepcraftRobot)
+  #Moving the robot in the middle in all axis
   axisRange = rob.params.axisRange
   _moveAbs(rob,axisRange./2)
 end
@@ -116,7 +123,7 @@ function _execute(protocol::_MIDIProtocol)
     throw(IllegalStateException("Robot not referenced! Cannot proceed!"))
   end
 
-  performMusic(protocol)
+  rockTheHouse(protocol)
 
   put!(protocol.biChannel, FinishedNotificationEvent())
   while !(protocol.finishAcknowledged)
@@ -129,7 +136,7 @@ function _execute(protocol::_MIDIProtocol)
   close(protocol.biChannel)
 end
 
-function performMusic(protocol::_MIDIProtocol)
+function rockTheHouse(protocol::_MIDIProtocol)
   notes = getnotes(protocol.midiFile, 1)
   #Problem: Synchronisierung von Stepcraft und Code -> Vllt gesamtes Lied direkt an Stepcraft schicken? Wie Pausen? Zuerst nur lansgame Lieder. Zeihe immer delay ab...
   # TODO pseudocode-ish
@@ -159,10 +166,10 @@ function playNote(protocol::_MIDIProtocol, note)
   velocity = velForNotes[note-protocol.singingStepcraft.lowestNote+1]
   distanceToGo = velocity/1000*10^(-3)*duration*1u"m" #unit of robot 1/1000 mm/s
   pos = protocol.singingStepcraft.positionOnStage
-  if pos[1]<0u"m"
-    direction = -1
-  else
+  if pos[1]<0u"m" #Move always towards middle, toDo: does moveRel consider safety?
     direction = 1
+  else
+    direction = -1
   end
   moveRel(protocol.singingStepcraft.robot, [direction*distanceToGo,0u*"m",0,u*"m"], speed::Union{Vector{<:Unitful.Velocity},Nothing})
   protocol.singingStepcraft.positionOnStage = [pos[1]+direction*distanceToGo,pos[2],pos[3]]
