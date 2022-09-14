@@ -11,7 +11,7 @@ Base.@kwdef mutable struct SingingStepcraft
   lowestNote::Int64
   highestNote::Int64
   positionOnStage::Vector{Vector{typeof(1.0u"mm")}} 
-  delay::Int64 = 0 #toDo: Measure Delay in ms
+  delay::Int64 = 0 #toDo: Measure Delay in ms, will not always be the same...
 
   function SingingStepcraft(rob::StepcraftRobot)#,lowestNote::Int) #,highestNote::Int)
     #velForNotes = [1980 2097 2222 2354 2495 2643 2800 2967 3143 3330 3528 3737 3960]
@@ -27,7 +27,7 @@ Base.@kwdef mutable struct SingingStepcraft
     if range > 100
       error("Number of notes too high (maximum = 100)")
     end
-    if maximum(velForNotes) > 10000 #toDo determin maximum Speed, with maximum speed one could detemin whether Stepcraft can always be instantiated with a hard coded lowest an highest note
+    if maximum(velForNotes) > 10000 #toDo determin maximum Speed, with maximum speed one could determine whether Stepcraft can always be instantiated with a hard coded lowest an highest note
       error("Highest Note is to high")
     end
     if maximum(velForNotes) < 0 #toDo is there a minimum speed?
