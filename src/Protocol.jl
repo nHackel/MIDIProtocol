@@ -24,6 +24,15 @@ Base.@kwdef mutable struct SingingStepcraft
     if range < 0
       error("Highest note should be higher than lowest note")
     end
+    if range > 100
+      error("Length of velocity is to big (maximum = 100)")
+    end
+    if maximum(velForNotes) > 10000 #toDo determin maximum Speed, with maximum speed one could detemin whether Stepcraft can always be instantiated with a hard coded lowest an highest note
+      error("Highest Note is to high")
+    end
+    if maximum(velForNotes) < 0 #toDo is there a minimum speed?
+      error("Lowest Note is to low")
+    end
 
     velForNotes = zeros(range+1)
     global counter = 1
@@ -31,19 +40,6 @@ Base.@kwdef mutable struct SingingStepcraft
       velForNotes[counter] = 1980*2^((note-60)/12) #60 is hard coded here because thats the number belonging to the 1980 robot speed
       counter = counter+1
     end
-    
-    if length(velForNotes) > 100
-      error("Length of velocity is to big (maximum = 100)")
-    end
-
-    if maximum(velForNotes) > 10000 #toDo determin maximum Speed, with maximum speed one could detemin whether Stepcraft can always be instantiated with a hard coded lowest an highest note
-      error("Highest Note is to high")
-    end
-    
-    if maximum(velForNotes) < 0 #toDo is there a minimum speed?
-      error("Lowest Note is to low")
-    end
-    
 
     teachingToSingInTune(rob,velForNotes)
     return new(rob,velForNotes,lowestNote,highestNote)
