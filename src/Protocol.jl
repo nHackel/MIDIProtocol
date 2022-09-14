@@ -35,8 +35,7 @@ Base.@kwdef mutable struct SingingStepcraft
     end
 
     velForNotes = teachingToSingInTune(rob,velForNotes,lowestNote,highestNote)
-    gettingOnStage(getRobot(protocol.scanner))
-    positionOnStage = rob.params.axisRange./2
+    positionOnStage = gettingOnStage(getRobot(protocol.scanner))
 
     return new(rob,velForNotes,lowestNote,highestNote,positionOnStage)
   end
@@ -102,6 +101,8 @@ function gettingOnStage(rob::StepcraftRobot)
   #Moving the robot in the middle in all axis
   axisRange = rob.params.axisRange
   _moveAbs(rob,axisRange./2)
+
+  return axisRange./2
 end
 
 function timeEstimate(protocol::_MIDIProtocol)
