@@ -8,18 +8,18 @@ MPIMeasurementProtocolParams(dict::Dict) = params_from_dict(MPIMeasurementProtoc
 Base.@kwdef mutable struct SingingStepcraft
   robot::MPIMeasurements.StepcraftRobot
   velForNotes::Vector{Int64}
-  lowestNote::Int = 48
-  highestNote::Int = 84
-  positionOnStage::Vector{Vector{typeof(1.0u"mm")}} = [0u*"mm",0u*"mm",0u*"mm"]
-  delay::Int = 0 #toDo: Measure Delay
+  lowestNote::Int64
+  highestNote::Int64
+  positionOnStage::Vector{Vector{typeof(1.0u"mm")}} 
+  delay::Int64 = 0 #toDo: Measure Delay in ms
 
-  
-
-  function SingingStepcraft(rob::StepcraftRobot,lowestNote::Int,highestNote::Int)
+  function SingingStepcraft(rob::StepcraftRobot)#,lowestNote::Int) #,highestNote::Int)
     #Hard coded...
     #velForNotes = [1980 2097 2222 2354 2495 2643 2800 2967 3143 3330 3528 3737 3960]
     #range = ["60" "61" "62" "63" "64" "65" "66" "67" "68" "69" "70" "71" "72"] #See MIDI.jl Documentation C=60
     #notes = ["C" "C#" "D" "D#" "E" "F" "F#" "G" "G#" "A" "A#" "B" "c"] 
+    highestNote = 48  #toDo: look for better place to place these values
+    lowestNote = 84
     range = highestNote-lowestNote
     if range < 0
       error("Highest note should be higher than lowest note")
@@ -42,7 +42,9 @@ Base.@kwdef mutable struct SingingStepcraft
     end
 
     teachingToSingInTune(rob,velForNotes)
-    return new(rob,velForNotes,lowestNote,highestNote)
+    moveToMiddle(getRobot(protocol.scanner))
+    positionOnStage = rob.params.axisRange
+    return new(rob,velForNotes,lowestNote,highestNote,positionOnStage)
   end
 end
 
@@ -75,18 +77,13 @@ function _init(protocol::_MIDIProtocol)
   protocol.midiFile = readMIDIFile(protocol.params.filename)
   protocol.singingStepcraft = SingingStepcraft(getRobot(protocol.scanner))
   checkForPlayablity(protocol)
-  moveToMiddle(getRobot(protocol.scanner))
-  # TODO Check if this file is something we can play
-  # TODO setup notes in StepcraftRobot
 end
 
 function checkForPlayablity(protocol::_MIDIProtocol)
   notes = getnotes(protocol.midiFile, 1)
-  playableNotes = protocol.SingingStepcraft.notes
-  highestPosNote = maximum(playableNotes)
-  lowestPosNote = minimum(playableNotes)
+  
   for i = 1:length(notes) #Bisschen umständlich. TODO: Bessere Lösung
-    if Int(notes[i].pitch)>highestPosNote || Int(notes[i].pitch)<lowestPosNote
+    if Int(notes[i].pitch)>protocol.singingStepcraft.highestNote || Int(notes[i].pitch)<protocol.singingStepcraft.lowestNote
       error("Notes are out of Stepcraft Range")
     end
     if protocol.singingStepcraft.delay > notes[i].duration
@@ -134,7 +131,7 @@ end
 
 function performMusic(protocol::_MIDIProtocol)
   notes = getnotes(protocol.midiFile, 1)
-  #Problem: Synchronisierung von Stepcraft und Code -> Vllt gesamtes Lied direkt an Stepcraft schicken? Wie Pausen?
+  #Problem: Synchronisierung von Stepcraft und Code -> Vllt gesamtes Lied direkt an Stepcraft schicken? Wie Pausen? Zuerst nur lansgame Lieder. Zeihe immer delay ab...
   # TODO pseudocode-ish
   for note in notes
     playNote(protocol, note)
@@ -158,9 +155,7 @@ function performMusic(protocol::_MIDIProtocol)
 end
 
 function playNote(protocol::_MIDIProtocol, note)
-  # TODO Make some magic
   
-
 end
 
 function cleanup(protocol::_MIDIProtocol)
