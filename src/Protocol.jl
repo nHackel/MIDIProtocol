@@ -8,13 +8,13 @@ MPIMeasurementProtocolParams(dict::Dict) = params_from_dict(MPIMeasurementProtoc
 mutable struct SingingStepcraft
   robot::MPIMeasurements.StepcraftRobot
   velForNotes::Vector{Int64}
-  notes::Vector{String}
+  range::Vector{String}
   positionOnStage::Vector{Vector{typeof(1.0u"mm")}}
 
   function SingingStepcraft(rob::StepcraftRobot)
     #Hard coded...
     velForNotes = [1980 2097 2222 2354 2495 2643 2800 2967 3143 3330 3528 3737 3960]
-    notes = ["60" "61" "62" "63" "64" "65" "66" "67" "68" "69" "70" "71" "72"] #See Midi.jl Documentation
+    range = ["60" "61" "62" "63" "64" "65" "66" "67" "68" "69" "70" "71" "72"] #See Midi.jl Documentation
     #notes = ["C" "C#" "D" "D#" "E" "F" "F#" "G" "G#" "A" "A#" "B" "c"] 
     if length(velForNotes) != length(notes)
       error("Length of velocity table and note table don't match!")
@@ -163,12 +163,3 @@ function handleEvent(protocol::_MIDIProtocol, event::ProgressQueryEvent)
 end
 
 handleEvent(protocol::_MIDIProtocol, event::FinishedAckEvent) = protocol.finishAcknowledged = true
-
-Base.@kwdef mutable struct A
-  B::Int64
-  C::Int64 = test(B)
-end
-
-function test(x::Int64)
-  return x/2
-end
