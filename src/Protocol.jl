@@ -5,22 +5,48 @@ Base.@kwdef mutable struct MIDIProtocolParams <: ProtocolParams
 end 
 MPIMeasurementProtocolParams(dict::Dict) = params_from_dict(MPIMeasurementProtocolParams, dict)
 
-mutable struct SingingStepcraft
+Base.@kwdef mutable struct SingingStepcraft
   robot::MPIMeasurements.StepcraftRobot
   velForNotes::Vector{Int64}
-  range::Vector{String}
-  positionOnStage::Vector{Vector{typeof(1.0u"mm")}}
+  lowestNote::Int = 48
+  highestNote::Int = 84
+  positionOnStage::Vector{Vector{typeof(1.0u"mm")}} = [0u*"mm",0u*"mm",0u*"mm"]
+  delay::Int = 0 #toDo: Measure Delay
 
-  function SingingStepcraft(rob::StepcraftRobot)
+  
+
+  function SingingStepcraft(rob::StepcraftRobot,lowestNote::Int,highestNote::Int)
     #Hard coded...
-    velForNotes = [1980 2097 2222 2354 2495 2643 2800 2967 3143 3330 3528 3737 3960]
-    range = ["60" "61" "62" "63" "64" "65" "66" "67" "68" "69" "70" "71" "72"] #See Midi.jl Documentation
+    #velForNotes = [1980 2097 2222 2354 2495 2643 2800 2967 3143 3330 3528 3737 3960]
+    #range = ["60" "61" "62" "63" "64" "65" "66" "67" "68" "69" "70" "71" "72"] #See MIDI.jl Documentation C=60
     #notes = ["C" "C#" "D" "D#" "E" "F" "F#" "G" "G#" "A" "A#" "B" "c"] 
-    if length(velForNotes) != length(notes)
-      error("Length of velocity table and note table don't match!")
+    range = highestNote-lowestNote
+    if range < 0
+      error("Highest note should be higher than lowest note")
     end
+
+    velForNotes = zeros(range+1)
+    global counter = 1
+    for note in lowestNote:highestNote
+      velForNotes[counter] = 1980*2^((note-60)/12) #60 is hard coded here because thats the number belonging to the 1980 robot speed
+      counter = counter+1
+    end
+    
+    if length(velForNotes) > 100
+      error("Length of velocity is to big (maximum = 100)")
+    end
+
+    if maximum(velForNotes) > 10000 #toDo determin maximum Speed, with maximum speed one could detemin whether Stepcraft can always be instantiated with a hard coded lowest an highest note
+      error("Highest Note is to high")
+    end
+    
+    if maximum(velForNotes) < 0 #toDo is there a minimum speed?
+      error("Lowest Note is to low")
+    end
+    
+
     teachingToSingInTune(rob,velForNotes)
-    return new(rob,velForNotes,notes)
+    return new(rob,velForNotes,lowestNote,highestNote)
   end
 end
 
@@ -44,17 +70,13 @@ end
 requiredDevices(protocol::_MIDIProtocol) = [StepcraftRobot]
 
 function teachingToSingInTune(rob::StepcraftRobot,velForNotes::Vector)
-  range = length(velForNotes)
-  if range > 100
-    error("Only 100 storage places to store velocities!")
-  end
-  for tone = 1:range
+  for tone = 1:length(velForNotes)
     stepcraftCommand(rob,"#G$tone,$(velForNotes[tone])")
   end
 end
 
 function _init(protocol::_MIDIProtocol)
-  protocol.midiFile = load(protocol.params.filename)
+  protocol.midiFile = readMIDIFile(protocol.params.filename)
   protocol.singingStepcraft = SingingStepcraft(getRobot(protocol.scanner))
   checkForPlayablity(protocol)
   moveToMiddle(getRobot(protocol.scanner))
@@ -70,6 +92,9 @@ function checkForPlayablity(protocol::_MIDIProtocol)
   for i = 1:length(notes) #Bisschen umständlich. TODO: Bessere Lösung
     if Int(notes[i].pitch)>highestPosNote || Int(notes[i].pitch)<lowestPosNote
       error("Notes are out of Stepcraft Range")
+    end
+    if protocol.singingStepcraft.delay > notes[i].duration
+      error("Stepcraft is not fast enough for this song")
     end
   end
 end
