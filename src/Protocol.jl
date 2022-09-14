@@ -155,7 +155,17 @@ function performMusic(protocol::_MIDIProtocol)
 end
 
 function playNote(protocol::_MIDIProtocol, note)
-  
+  duration = note.duration-delay
+  velocity = velForNotes[note-protocol.singingStepcraft.lowestNote+1]
+  distanceToGo = velocity/1000*10^(-3)*duration*1u"m" #unit of robot 1/1000 mm/s
+  pos = protocol.singingStepcraft.positionOnStage
+  if pos[1]<0u"m"
+    direction = -1
+  else
+    direction = 1
+  end
+  moveRel(protocol.singingStepcraft.robot, [direction*distanceToGo,0u*"m",0,u*"m"], speed::Union{Vector{<:Unitful.Velocity},Nothing})
+  protocol.singingStepcraft.positionOnStage = [pos[1]+direction*distanceToGo,pos[2],pos[3]]
 end
 
 function cleanup(protocol::_MIDIProtocol)
