@@ -24,11 +24,11 @@ mutable struct SingingStepcraft
   end
 end
 
-Base.@kwdef mutable struct MIDIProtocol <: Protocol
+Base.@kwdef mutable struct _MIDIProtocol <: Protocol
   name::AbstractString
   description::AbstractString
   scanner::MPIScanner
-  params::MPIMeasurementProtocolParams
+  params::typeof(MPIMeasurementProtocolParams)
   biChannel::Union{BidirectionalChannel{ProtocolEvent}, Nothing} = nothing
   executeTask::Union{Task, Nothing} = nothing
 
@@ -41,7 +41,7 @@ Base.@kwdef mutable struct MIDIProtocol <: Protocol
   singingStepcraft::SingingStepcraft = nothing
 end
 
-requiredDevices(protocol::MIDIProtocol) = [StepcraftRobot]
+requiredDevices(protocol::_MIDIProtocol) = [StepcraftRobot]
 
 function teachingToSingInTune(rob::StepcraftRobot,velForNotes::Vector)
   range = length(velForNotes)
@@ -53,13 +53,25 @@ function teachingToSingInTune(rob::StepcraftRobot,velForNotes::Vector)
   end
 end
 
-function _init(protocol::MIDIProtocol)
+function _init(protocol::_MIDIProtocol)
   protocol.midiFile = load(protocol.params.filename)
   protocol.singingStepcraft = SingingStepcraft(getRobot(protocol.scanner))
-  moveToMiddle(getRobot(protocol.scanner)
-  checkForPlayablity(protocol.midifile)
+  checkForPlayablity(protocol)
+  moveToMiddle(getRobot(protocol.scanner))
   # TODO Check if this file is something we can play
   # TODO setup notes in StepcraftRobot
+end
+
+function checkForPlayablity(protocol::_MIDIProtocol)
+  notes = getnotes(protocol.midiFile, 1)
+  playableNotes = protocol.SingingStepcraft.notes
+  highestPosNote = maximum(playableNotes)
+  lowestPosNote = minimum(playableNotes)
+  for i = 1:length(notes) #Bisschen umständlich. TODO: Bessere Lösung
+    if Int(notes[i].pitch)>highestPosNote || Int(notes[i].pitch)<lowestPosNote
+      error("Notes are out of Stepcraft Range")
+    end
+  end
 end
 
 function moveToMiddle(rob::StepcraftRobot)
@@ -67,10 +79,10 @@ function moveToMiddle(rob::StepcraftRobot)
   _moveAbs(rob,axisRange./2)
 end
 
-function timeEstimate(protocol::MIDIProtocol)
+function timeEstimate(protocol::_MIDIProtocol)
   # TODO return track time as string. ?In SECONDS?
   notes = getnotes(protocol.midiFile, 1)
-  return String(Int64(round((notes[1].pos-(notes[end].pos+notes[end].duration))/1000))))
+  return String(Int64(round((notes[1].pos-(notes[end].pos+notes[end].duration))/1000)))
 end
 
 function enterExecute(protocol::MPIMeasurementProtocol)
@@ -80,7 +92,7 @@ function enterExecute(protocol::MPIMeasurementProtocol)
   protocol.finishAcknowledged = false
 end
 
-function _execute(protocol::MIDIProtocol)
+function _execute(protocol::_MIDIProtocol)
   @info "MIDI protocol started"
   if !isReferenced(getRobot(protocol.scanner))
     throw(IllegalStateException("Robot not referenced! Cannot proceed!"))
@@ -99,9 +111,9 @@ function _execute(protocol::MIDIProtocol)
   close(protocol.biChannel)
 end
 
-function performMusic(protocol::MIDIProtocol)
+function performMusic(protocol::_MIDIProtocol)
   notes = getnotes(protocol.midiFile, 1)
-
+  #Problem: Synchronisierung von Stepcraft und Code -> Vllt gesamtes Lied direkt an Stepcraft schicken? Wie Pausen?
   # TODO pseudocode-ish
   for note in notes
     playNote(protocol, note)
@@ -124,33 +136,33 @@ function performMusic(protocol::MIDIProtocol)
   end
 end
 
-function playNote(protocol::MIDIProtocol, note)
+function playNote(protocol::_MIDIProtocol, note)
   # TODO Make some magic
-  if(Int(note.pitch)
+  
 
 end
 
-function cleanup(protocol::MIDIProtocol)
+function cleanup(protocol::_MIDIProtocol)
   # NOP
 end
 
-function stop(protocol::MIDIProtocol)
+function stop(protocol::_MIDIProtocol)
   protocol.stopped = true
 end
 
-function resume(protocol::MIDIProtocol)
+function resume(protocol::_MIDIProtocol)
   protocol.stopped = false
 end
 
-function cancel(protocol::MIDIProtocol)
+function cancel(protocol::_MIDIProtocol)
   protocol.cancelled = true
 end
 
-function handleEvent(protocol::MIDIProtocol, event::ProgressQueryEvent)
+function handleEvent(protocol::_MIDIProtocol, event::ProgressQueryEvent)
 
 end
 
-handleEvent(protocol::MIDIProtocol, event::FinishedAckEvent) = protocol.finishAcknowledged = true
+handleEvent(protocol::_MIDIProtocol, event::FinishedAckEvent) = protocol.finishAcknowledged = true
 
 Base.@kwdef mutable struct A
   B::Int64
