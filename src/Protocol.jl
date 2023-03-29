@@ -10,32 +10,32 @@ Base.@kwdef mutable struct SingingStepcraft
   velForNotes::Vector{Int64}
   lowestNote::Int64
   highestNote::Int64
-  positionOnStage::Vector{Vector{typeof(1.0u"mm")}} 
+  positionOnStage::Vector{typeof(1.0u"mm")}
   delay::Int64 = 0 #toDo: Measure Delay in ms, will not always be the same...
 
   function SingingStepcraft(rob::StepcraftRobot)#,lowestNote::Int) #,highestNote::Int)
     #velForNotes = [1980 2097 2222 2354 2495 2643 2800 2967 3143 3330 3528 3737 3960]
     #range = ["60" "61" "62" "63" "64" "65" "66" "67" "68" "69" "70" "71" "72"] #See MIDI.jl Documentation C=60
     #notes = ["C" "C#" "D" "D#" "E" "F" "F#" "G" "G#" "A" "A#" "B" "c"] 
-    highestNote = 48  #toDo: look for better place to place these values
-    lowestNote = 84
+    highestNote = 84  #toDo: look for better place to place these values
+    lowestNote = 48
     
     #possible initialisation errors:
-    if range < 0
-      error("Highest note should be higher than lowest note")
-    end
-    if range > 100
-      error("Number of notes too high (maximum = 100)")
-    end
-    if maximum(velForNotes) > 10000 #toDo determin maximum Speed, with maximum speed one could determine whether Stepcraft can always be instantiated with a hard coded lowest an highest note
-      error("Highest Note is to high")
-    end
-    if maximum(velForNotes) < 0 #toDo is there a minimum speed?
-      error("Lowest Note is to low")
-    end
+    # if range < 0
+    #   error("Highest note should be higher than lowest note")
+    # end
+    # if range > 100
+    #   error("Number of notes too high (maximum = 100)")
+    # end
+    # if maximum(velForNotes) > 10000 #toDo determin maximum Speed, with maximum speed one could determine whether Stepcraft can always be instantiated with a hard coded lowest an highest note
+    #   error("Highest Note is to high")
+    # end
+    # if maximum(velForNotes) < 0 #toDo is there a minimum speed?
+    #   error("Lowest Note is to low")
+    # end
 
-    velForNotes = teachingToSingInTune(rob,velForNotes,lowestNote,highestNote)
-    positionOnStage = gettingOnStage(getRobot(protocol.scanner))
+    velForNotes = teachingToSingInTune(rob,lowestNote,highestNote)
+    positionOnStage = gettingOnStage(rob)
 
     return new(rob,velForNotes,lowestNote,highestNote,positionOnStage)
   end
@@ -66,13 +66,13 @@ function teachingToSingInTune(rob::StepcraftRobot,lowestNote::Int64,highestNote:
   velForNotes = zeros(range+1)
   global counter = 1
   for note in lowestNote:highestNote
-    velForNotes[counter] = 1980*2^((note-60)/12) #60 is hard coded here because thats the number belonging to the 1980 robot speed
+    velForNotes[counter] = Int(round(1980*2^((note-60)/12))) #60 is hard coded here because thats the number belonging to the 1980 robot speed
     counter = counter+1
   end
   
   #Sending velocity values to the stepcraft
   for tone = 1:length(velForNotes)
-    stepcraftCommand(rob,"#G$tone,$(velForNotes[tone])")
+    MIDIProtocol.MPIMeasurements.stepcraftCommand(rob,"#G$tone,$(velForNotes[tone])")
   end
 
   return velForNotes
@@ -100,9 +100,12 @@ end
 function gettingOnStage(rob::StepcraftRobot)
   #Moving the robot in the middle in all axis
   axisRange = rob.params.axisRange
-  _moveAbs(rob,axisRange./2)
+  @info axisRange[1]
+  pos = [0*u"mm", (axisRange[1])[2]/2, 0*u"mm"]
+  rob.state = MIDIProtocol.MPIMeasurements.READY
+  MIDIProtocol.MPIMeasurements.moveAbs(rob,MIDIProtocol.MPIMeasurements.RobotCoords(pos))
 
-  return axisRange./2
+  return pos
 end
 
 function timeEstimate(protocol::_MIDIProtocol)
