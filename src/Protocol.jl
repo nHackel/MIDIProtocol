@@ -166,7 +166,7 @@ function rockTheHouse(protocol::_MIDIProtocol)
 end
 
 function playNote(protocol::_MIDIProtocol, note)
-  duration = note.duration-delay
+  duration = note.duration#-delay
   velocity = velForNotes[note-protocol.singingStepcraft.lowestNote+1]
   distanceToGo = velocity/1000*10^(-3)*duration*1u"m" #unit of robot 1/1000 mm/s
   pos = protocol.singingStepcraft.positionOnStage
@@ -175,7 +175,7 @@ function playNote(protocol::_MIDIProtocol, note)
   else
     direction = -1
   end
-  moveRel(protocol.singingStepcraft.robot, [direction*distanceToGo,0u*"m",0,u*"m"], speed::Union{Vector{<:Unitful.Velocity},Nothing})
+  moveRel(protocol.singingStepcraft.robot, [direction*distanceToGo,0u*"m",0,u*"m"])
   protocol.singingStepcraft.positionOnStage = [pos[1]+direction*distanceToGo,pos[2],pos[3]]
 end
 
